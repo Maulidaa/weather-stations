@@ -2,13 +2,14 @@
 #define DHT11_PIN 2
 #include <Wire.h>
 
+
 float revolutions = 0;
 float windSpeed = 0;
 
 DHT dht11(DHT11_PIN, DHT11);
 
 const float mmPerPulse = 0.173;
-float mmTotali = 0;
+float mmTotal = 0;
 int sensore = 0;
 int statoPrecedente = 0;
 
@@ -71,7 +72,7 @@ void loop() {
     sensore = digitalRead(9);
 
     if (sensore != statoPrecedente) {
-      mmTotali = mmTotali + mmPerPulse;
+      mmTotal = mmTotal + mmPerPulse;
     }
 
     delay(500);
