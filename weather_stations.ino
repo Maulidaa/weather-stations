@@ -12,6 +12,11 @@ float mmTotali = 0;
 int sensore = 0;
 int statoPrecedente = 0;
 
+void revolution() {
+  revolutions++;
+  Serial.print(".");
+}
+
 void setup() {
   Serial.begin(9600);
   //anemometer
@@ -27,9 +32,7 @@ void setup() {
 
 
 void loop() {
-
-
-  attachInterrupt(digitalPinToInterrupt(2), function, RISING);
+  attachInterrupt(digitalPinToInterrupt(2), revolution, RISING);
   delay(60000);
   detachInterrupt(2);
 
@@ -75,8 +78,4 @@ void loop() {
 
     statoPrecedente = sensore;
   }
-
-  void function() {
-    revolutions++;
-    Serial.print(".");
-  }
+}
