@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <Adafruit_BMP085.h>
 
 const char WIFI_SSID[] = "WIFI_SSID";
 const char WIFI_PASSWORD[] = "WIFI_PASSWORD";
@@ -20,6 +21,8 @@ const float mmPerPulse = 0.173;
 float mmTotal = 0;
 int sensore = 0;
 int statoPrecedente = 0;
+
+Adafruit_BMP085 bmp;
 
 void revolution() {
   revolutions++;
@@ -99,5 +102,17 @@ void loop() {
     delay(500);
 
     statoPrecedente = sensore;
+
+    //bmp180
+    float tempC = bmp.readTemperature();     // °C
+    long  pressPa = bmp.readPressure();      // Pa
+    // Standard sea-level pressure (you can calibrate this for better altitude accuracy)
+    float seaLevelPa = 101325.0;
+    float altitudeM = bmp.readAltitude(seaLevelPa);
+    Serial.print("Temp: "); Serial.print(tempC); Serial.println(" C");
+    Serial.print("Pressure: "); Serial.print(pressPa); Serial.println(" Pa");
+    Serial.print("Altitude: "); Serial.print(altitudeM); Serial.println(" m");
+    Serial.println("---");
+    delay(1000);
   }
 }
