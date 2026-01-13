@@ -1,7 +1,15 @@
 #include "DHT.h"
 #define DHT11_PIN 2
 #include <Wire.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 
+const char WIFI_SSID[] = "WIFI_SSID";
+const char WIFI_PASSWORD[] = "WIFI_PASSWORD";
+
+String HOST_NAME = "http://192.168.0.19";
+String PATH_NAME   = "/insert_temp.php";
+String queryString = "";
 
 float revolutions = 0;
 float windSpeed = 0;
@@ -19,6 +27,19 @@ void revolution() {
 }
 
 void setup() {
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println("Connecting");
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.print("Connected to WiFi network with IP Address: ");
+  Serial.println(WiFi.localIP());
+  
+  HTTPClient http;
+
   Serial.begin(9600);
   //anemometer
   pinMode(2, INPUT);
