@@ -432,7 +432,8 @@ while($row = $result_hourly->fetch_assoc()) {
                     <?php
                     $result_24h->data_seek(0);
                     $count = 0;
-                    while($row = $result_24h->fetch_assoc() && $count < 20):
+                    while($row = $result_24h->fetch_assoc()):
+                        if($count >= 20) break;
                         $count++;
                     ?>
                     <tr>
