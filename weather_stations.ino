@@ -30,29 +30,36 @@ void revolution() {
 }
 
 void setup() {
+  Serial.begin(9600);
+  delay(1000);
+  
+  // Initialize sensors
+  dht11.begin();
+  if (!bmp.begin()) {
+    Serial.println("BMP180 initialization failed!");
+  }
+
+  // Configure pins
+  pinMode(2, INPUT);  // anemometer
+  pinMode(9, INPUT);  // rain gauge
+
+  // Connect to WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("Connecting");
-  while(WiFi.status() != WL_CONNECTED) {
+  Serial.println("Connecting to WiFi...");
+  int attempts = 0;
+  while(WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
     Serial.print(".");
+    attempts++;
   }
 
   Serial.println("");
-  Serial.print("Connected to WiFi network with IP Address: ");
-  Serial.println(WiFi.localIP());
-  
-  HTTPClient http;
-
-  Serial.begin(9600);
-  //anemometer
-  pinMode(2, INPUT);
-
-  //dht
-  dht11.begin();
-
-  //rain gauge
-  pinMode(9, INPUT);
-  //pinMode(3, OUTPUT);
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("Connected to WiFi. IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("Failed to connect to WiFi");
+  }
 }
 
 
@@ -64,55 +71,99 @@ void loop() {
   windSpeed = revolutions * 0.18;
 
   Serial.println("");
-  Serial.print("Velocità: ");
-  Serial.println(windSpeed);
+  Serial.print("Wind Speed: ");
+  Serial.print(windSpeed);
+  Serial.println(" km/h");
 
   revolutions = 0;
 
-  // read humidity
-  float humi = dht11.readHumidity();
-  // read temperature as Celsius
-  float tempC = dht11.readTemperature();
-  // read temperature as Fahrenheit
+  // Read DHT11 sensors
+  float humidity = dht11.readHumidity();
+  float tempDHT = dht11.readTemperature();
   float tempF = dht11.readTemperature(true);
 
-  // check if any reads failed
-  if (isnan(humi) || isnan(tempC) || isnan(tempF)) {
-    Serial.println("Failed to read from DHT11 sensor!");
-  } else {
-    Serial.print("DHT11# Humidity: ");
-    Serial.print(humi);
-    Serial.print("%");
+  // Read BMP180 sensors
+  float tempBMP = bmp.readTemperature();
+  long pressPa = bmp.readPressure();
+  float seaLevelPa = 101325.0;
+  float altitudeM = bmp.readAltitude(seaLevelPa);
 
-    Serial.print("  |  ");
+  // Read rain gauge
+  sensore = digitalRead(9);
+  if (sensore != statoPrecedente) {
+    mmTotal += mmPerPulse;
+  }
+  statoPrecedente = sensore;
 
-    Serial.print("Temperature: ");
-    Serial.print(tempC);
-    Serial.print("°C ~ ");
-    Serial.print(tempF);
-    Serial.println("°F");
+  // Check sensor readings
+  if (isnan(humidity) || isnan(tempDHT) || isnan(tempF)) {
+    Serial.println("ERROR: Failed to read DHT11 sensor!");
+    return;
+  }
 
-    //rain gauge
-    sensore = digitalRead(9);
+  // Display sensor data
+  Serial.print("DHT11 - Humidity: ");
+  Serial.print(humidity);
+  Serial.print("% | Temperature: ");
+  Serial.print(tempDHT);
+  Serial.print("°C (");
+  Serial.print(tempF);
+  Serial.println("°F)");
 
-    if (sensore != statoPrecedente) {
-      mmTotal = mmTotal + mmPerPulse;
+  Serial.print("BMP180 - Temp: ");
+  Serial.print(tempBMP);
+  Serial.print("°C | Pressure: ");
+  Serial.print(pressPa);
+  Serial.print(" Pa | Altitude: ");
+  Serial.print(altitudeM);
+  Serial.println(" m");
+
+  Serial.print("Rain Gauge: ");
+  Serial.print(mmTotal);
+  Serial.println(" mm");
+  Serial.println("---");
+
+  delay(1000);
+
+  // Send data to server
+  if(WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    
+    // Build POST request with JSON data (more secure than GET)
+    String jsonData = "{\"temp\":";
+    jsonData += String(tempDHT);
+    jsonData += ",\"humi\":";
+    jsonData += String(humidity);
+    jsonData += ",\"pressure\":";
+    jsonData += String(pressPa);
+    jsonData += ",\"altitude\":";
+    jsonData += String(altitudeM);
+    jsonData += ",\"wind\":";
+    jsonData += String(windSpeed);
+    jsonData += ",\"rain\":";
+    jsonData += String(mmTotal);
+    jsonData += "}";
+
+    String url = HOST_NAME + PATH_NAME;
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpResponseCode = http.POST(jsonData);
+    
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.print("HTTP Response Code: ");
+      Serial.println(httpResponseCode);
+      Serial.println(response);
+      
+      // Reset rain gauge after successful data send
+      mmTotal = 0;
+    } else {
+      Serial.print("ERROR: HTTP POST failed with code: ");
+      Serial.println(httpResponseCode);
     }
-
-    delay(500);
-
-    statoPrecedente = sensore;
-
-    //bmp180
-    float tempC = bmp.readTemperature();     // °C
-    long  pressPa = bmp.readPressure();      // Pa
-    // Standard sea-level pressure (you can calibrate this for better altitude accuracy)
-    float seaLevelPa = 101325.0;
-    float altitudeM = bmp.readAltitude(seaLevelPa);
-    Serial.print("Temp: "); Serial.print(tempC); Serial.println(" C");
-    Serial.print("Pressure: "); Serial.print(pressPa); Serial.println(" Pa");
-    Serial.print("Altitude: "); Serial.print(altitudeM); Serial.println(" m");
-    Serial.println("---");
-    delay(1000);
+    http.end();
+  } else {
+    Serial.println("WiFi Disconnected");
   }
 }
