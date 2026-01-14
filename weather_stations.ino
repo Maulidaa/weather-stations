@@ -9,7 +9,7 @@ const char WIFI_SSID[] = "WIFI_SSID";
 const char WIFI_PASSWORD[] = "WIFI_PASSWORD";
 
 String HOST_NAME = "http://192.168.0.19";
-String PATH_NAME   = "/insert_temp.php";
+String PATH_NAME   = "/insert_data.php";
 String queryString = "";
 
 float revolutions = 0;
